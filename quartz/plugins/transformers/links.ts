@@ -1,5 +1,6 @@
 import { QuartzTransformerPlugin } from "../types"
 import {
+  FilePath,
   FullSlug,
   RelativeURL,
   SimpleSlug,
@@ -7,6 +8,7 @@ import {
   stripSlashes,
   simplifySlug,
   splitAnchor,
+  slugifyFilePath,
   transformLink,
 } from "../../util/path"
 import path from "path"
@@ -158,6 +160,38 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                 }
               }
             })
+
+            // Also collect wikilinks from frontmatter values (e.g. topic: "[[SomePage]]")
+            const frontmatter = file.data.frontmatter
+            if (frontmatter) {
+              const wikilinkRegex = /\[\[([^\[\]\|\#\\]+)/g
+              const processFrontmatterValue = (value: unknown) => {
+                if (typeof value === "string") {
+                  wikilinkRegex.lastIndex = 0
+                  let match
+                  while ((match = wikilinkRegex.exec(value)) !== null) {
+                    const rawFp = match[1].trim()
+                    if (!rawFp) continue
+                    const simpleTarget = simplifySlug(slugifyFilePath(rawFp as FilePath))
+                    if (opts.markdownLinkResolution === "shortest") {
+                      const matchingSlugs = transformOptions.allSlugs.filter(
+                        (slug) => slug.split("/").at(-1) === simpleTarget,
+                      )
+                      outgoing.add(
+                        matchingSlugs.length === 1
+                          ? simplifySlug(matchingSlugs[0])
+                          : simpleTarget,
+                      )
+                    } else {
+                      outgoing.add(simpleTarget)
+                    }
+                  }
+                } else if (Array.isArray(value)) {
+                  value.forEach(processFrontmatterValue)
+                }
+              }
+              Object.values(frontmatter).forEach(processFrontmatterValue)
+            }
 
             file.data.links = [...outgoing]
           }
