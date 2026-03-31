@@ -9,6 +9,7 @@ interface FileTrieData {
 
 export class FileTrieNode<T extends FileTrieData = ContentDetails> {
   isFolder: boolean
+  isFolderNote: boolean
   children: Array<FileTrieNode<T>>
 
   private slugSegments: string[]
@@ -24,6 +25,7 @@ export class FileTrieNode<T extends FileTrieData = ContentDetails> {
     this.slugSegments = segments
     this.data = data ?? null
     this.isFolder = false
+    this.isFolderNote = false
     this.displayNameOverride = undefined
   }
 
@@ -47,6 +49,16 @@ export class FileTrieNode<T extends FileTrieData = ContentDetails> {
     return path
   }
 
+  // The URL to navigate to when clicking this node in the explorer.
+  // For folder-notes this is the note's own page; otherwise identical to slug.
+  get linkSlug(): FullSlug {
+    if (this.isFolder && this.isFolderNote) {
+      const path = joinSegments(...this.slugSegments) as FullSlug
+      return joinSegments(path, this.slugSegments[this.slugSegments.length - 1]) as FullSlug
+    }
+    return this.slug
+  }
+
   get slugSegment(): string {
     return this.slugSegments[this.slugSegments.length - 1]
   }
@@ -68,8 +80,13 @@ export class FileTrieNode<T extends FileTrieData = ContentDetails> {
     const segment = path[0]
     if (path.length === 1) {
       // base case, we are at the end of the path
-      if (segment === "index") {
+      const folderSegment = this.slugSegments[this.slugSegments.length - 1]
+      const isFolderNote = this.slugSegments.length > 0 && segment === folderSegment
+      if (segment === "index" || isFolderNote) {
         this.data ??= file
+        if (isFolderNote) {
+          this.isFolderNote = true
+        }
       } else {
         this.makeChild(path, file)
       }

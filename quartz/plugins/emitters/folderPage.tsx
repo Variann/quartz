@@ -78,11 +78,22 @@ function computeFolderInfo(
     ]),
   )
 
-  // Update with actual content if available
+  // Update with actual content if available.
+  // Matches both explicit index files (folder/index) and folder-notes (folder/folder).
   for (const [tree, file] of content) {
     const slug = stripSlashes(simplifySlug(file.data.slug!)) as SimpleSlug
     if (folders.has(slug)) {
       folderInfo[slug] = [tree, file]
+    } else {
+      const parts = slug.split("/")
+      const isFolderNote =
+        parts.length >= 2 && parts[parts.length - 1] === parts[parts.length - 2]
+      if (isFolderNote) {
+        const parentFolder = parts.slice(0, -1).join("/") as SimpleSlug
+        if (folders.has(parentFolder)) {
+          folderInfo[parentFolder] = [tree, file]
+        }
+      }
     }
   }
 
