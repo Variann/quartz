@@ -37,6 +37,14 @@ async function* processFolderInfo(
   ][]) {
     const slug = joinSegments(folder, "index") as FullSlug
     const [tree, file] = folderContent
+
+    // If this folder's content comes from a folder-note (X/X.md rewritten to X/index),
+    // ContentPage already emits the full content page with graph view — skip here.
+    const relParts = file.data.relativePath?.split("/") ?? []
+    const isFolderNote =
+      relParts.length >= 2 &&
+      relParts.at(-1)?.replace(/\.md$/, "") === relParts.at(-2)
+    if (isFolderNote) continue
     const cfg = ctx.cfg.configuration
     const externalResources = pageResources(pathToRoot(slug), resources)
     const componentData: QuartzComponentProps = {

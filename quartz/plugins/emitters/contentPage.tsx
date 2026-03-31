@@ -83,8 +83,15 @@ export const ContentPage: QuartzEmitterPlugin<Partial<FullPageLayout>> = (userOp
           containsIndex = true
         }
 
+        // Folder-notes (X/X.md rewritten to X/index) must be emitted by ContentPage
+        // because FolderPage skips them. Detect by relativePath pattern X/X.md.
+        const relParts = file.data.relativePath?.split("/") ?? []
+        const isFolderNote =
+          relParts.length >= 2 &&
+          relParts.at(-1)?.replace(/\.md$/, "") === relParts.at(-2)
+
         // only process home page, non-tag pages, and non-index pages
-        if (slug.endsWith("/index") || slug.startsWith("tags/")) continue
+        if ((slug.endsWith("/index") && !isFolderNote) || slug.startsWith("tags/")) continue
         yield processContent(ctx, tree, file.data, allFiles, opts, resources)
       }
 
@@ -112,8 +119,13 @@ export const ContentPage: QuartzEmitterPlugin<Partial<FullPageLayout>> = (userOp
       for (const [tree, file] of content) {
         const slug = file.data.slug!
         if (!changedSlugs.has(slug)) continue
-        if (slug.endsWith("/index") || slug.startsWith("tags/")) continue
 
+        const relParts = file.data.relativePath?.split("/") ?? []
+        const isFolderNote =
+          relParts.length >= 2 &&
+          relParts.at(-1)?.replace(/\.md$/, "") === relParts.at(-2)
+
+        if ((slug.endsWith("/index") && !isFolderNote) || slug.startsWith("tags/")) continue
         yield processContent(ctx, tree, file.data, allFiles, opts, resources)
       }
     },

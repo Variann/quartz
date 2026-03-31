@@ -69,6 +69,24 @@ function sluggify(s: string): string {
     .replace(/\/$/, "")
 }
 
+/** Like `slugifyFilePath` but treats folder-notes (`X/X.md`) as their parent folder's index (`X/index.md`), producing shorter URLs. */
+export function slugifyFilePathFolderAware(fp: FilePath): FullSlug {
+  const stripped = stripSlashes(fp) as FilePath
+  const parts = stripped.split("/")
+  if (parts.length >= 2) {
+    const fileName = parts.at(-1)!
+    if (fileName.endsWith(".md")) {
+      const nameWithoutExt = fileName.slice(0, -3)
+      const parentFolder = parts.at(-2)!
+      if (nameWithoutExt === parentFolder) {
+        const indexPath = [...parts.slice(0, -1), "index.md"].join("/") as FilePath
+        return slugifyFilePath(indexPath)
+      }
+    }
+  }
+  return slugifyFilePath(fp)
+}
+
 export function slugifyFilePath(fp: FilePath, excludeExt?: boolean): FullSlug {
   fp = stripSlashes(fp) as FilePath
   let ext = getFileExtension(fp)
@@ -238,10 +256,14 @@ export function transformLink(src: FullSlug, target: string, opts: TransformOpti
 
     if (opts.strategy === "shortest") {
       // if the file name is unique, then it's just the filename
+      // also match index files by their parent folder name (supports folder-notes rewritten to X/index)
       const matchingFileNames = opts.allSlugs.filter((slug) => {
         const parts = slug.split("/")
         const fileName = parts.at(-1)
-        return targetCanonical === fileName
+        return (
+          targetCanonical === fileName ||
+          (fileName === "index" && parts.at(-2) === targetCanonical)
+        )
       })
 
       // only match, just use it

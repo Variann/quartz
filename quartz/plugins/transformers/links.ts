@@ -174,9 +174,14 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                     if (!rawFp) continue
                     const simpleTarget = simplifySlug(slugifyFilePath(rawFp as FilePath))
                     if (opts.markdownLinkResolution === "shortest") {
-                      const matchingSlugs = transformOptions.allSlugs.filter(
-                        (slug) => slug.split("/").at(-1) === simpleTarget,
-                      )
+                      const matchingSlugs = transformOptions.allSlugs.filter((slug) => {
+                        const parts = slug.split("/")
+                        const fileName = parts.at(-1)
+                        return (
+                          simpleTarget === fileName ||
+                          (fileName === "index" && parts.at(-2) === simpleTarget)
+                        )
+                      })
                       outgoing.add(
                         matchingSlugs.length === 1
                           ? simplifySlug(matchingSlugs[0])
